@@ -13,9 +13,15 @@ Pensado para correr como add-on de Home Assistant OS: lee la configuracion de
 /data/options.json y publica usando la API del Supervisor (sin token manual).
 Tambien funciona standalone: ver variables de entorno HA_URL / HA_TOKEN.
 """
-import json, os, re, subprocess, sys, time, urllib.request
+import json, os, re, subprocess, sys, time, unicodedata, urllib.request
 
 OPTIONS_FILE = "/data/options.json"
+
+def slugify(name):
+    """Convierte un nombre en un id valido para entidad: 'iPhone de Pablo' -> 'iphone_de_pablo'."""
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    s = re.sub(r"[^a-zA-Z0-9]+", "_", s).strip("_").lower()
+    return s or "persona"
 
 def load_config():
     """Carga la config del add-on (/data/options.json) o de variables de entorno (standalone)."""
@@ -26,11 +32,12 @@ def load_config():
     iface = cfg.get("interface") or os.getenv("IFACE", "eth0")
     scan_interval = int(cfg.get("scan_interval") or os.getenv("SCAN_INTERVAL", 30))
     away_timeout = int(cfg.get("away_timeout") or os.getenv("AWAY_TIMEOUT", 600))
-    # personas: lista de {id, name, macs:[...]}
+    # personas: el usuario solo ingresa nombre + macs; el id (y la entidad) se derivan del nombre
     personas = {}
     for p in cfg.get("people", []):
-        pid = p["id"].lower()
-        personas[pid] = {"name": p.get("name", pid), "macs": [m.lower() for m in p["macs"]]}
+        name = p.get("name") or p.get("id") or "persona"
+        pid = slugify(name)
+        personas[pid] = {"name": name, "macs": [m.lower() for m in p["macs"]]}
     # Acceso a HA: dentro del add-on usa el Supervisor; standalone usa HA_URL/HA_TOKEN
     sup = os.getenv("SUPERVISOR_TOKEN")
     if sup:

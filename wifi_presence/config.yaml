@@ -1,6 +1,6 @@
 ---
 name: WiFi Presence
-version: "1.0.0"
+version: "1.1.0"
 slug: wifi_presence
 description: >-
   Detección de presencia por WiFi (arp-scan + ping dirigido) que publica un
@@ -27,8 +27,7 @@ options:
   away_timeout: 600
   interface: end0
   people:
-    - id: persona1
-      name: Persona 1
+    - name: iPhone de Persona 1
       macs:
         - "02:00:00:00:00:01"
 schema:
@@ -36,7 +35,6 @@ schema:
   away_timeout: int(60,3600)
   interface: str
   people:
-    - id: str
-      name: str
+    - name: str
       macs:
         - str

@@ -30,13 +30,14 @@ Más una **histéresis** configurable que absorbe los silencios temporales del W
 
 ## ⚙️ Configuración mínima
 
+Al instalar, la pestaña **Configuración** muestra un **formulario**: agregás cada persona con su **nombre** y sus **MACs** (botón **+**). Equivalente en YAML:
+
 ```yaml
 scan_interval: 30
 away_timeout: 600
 interface: end0
 people:
-  - id: persona1
-    name: Persona 1
+  - name: iPhone de Persona 1   # define la entidad: device_tracker.iphone_de_persona_1_wifi
     macs:
       - "02:00:00:00:00:01"
 ```

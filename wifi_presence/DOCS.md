@@ -20,21 +20,25 @@ Si **ninguna** de las MAC de la persona responde durante `away_timeout` segundos
 
 ## Configuración
 
+Al instalar el add-on, en la pestaña **Configuración** vas a ver un **formulario**: completás el intervalo, el timeout, la interfaz y la lista de **personas** (un botón **+** para agregar cada una con su **nombre** y sus **MACs**). No hace falta editar YAML a mano.
+
+El equivalente en YAML (vista "Editar en YAML"):
+
 ```yaml
 scan_interval: 30        # segundos entre escaneos (10–300)
 away_timeout: 600        # segundos sin ver el teléfono para marcar "fuera" (60–3600)
 interface: end0          # interfaz de red del host (ver abajo cómo averiguarla)
 people:
-  - id: persona1            # identificador interno (minúsculas, sin espacios)
-    name: Persona 1          # nombre que se muestra
-    macs:                # una o varias MAC (ej. 2.4GHz y 5GHz)
+  - name: iPhone de Persona 1   # el nombre define la entidad: device_tracker.iphone_de_persona_1_wifi
+    macs:                       # una o varias MAC (ej. 2.4GHz y 5GHz)
       - "02:00:00:00:00:01"
-  - id: persona2
-    name: Persona 2
+  - name: iPhone de Persona 2
     macs:
       - "02:00:00:00:00:02"
       - "02:00:00:00:00:03"
 ```
+
+> El **nombre** es lo único que define la entidad: el add-on lo convierte a minúsculas/guiones bajos. Ej.: `iPhone de Pablo` → `device_tracker.iphone_de_pablo_wifi`.
 
 ### Cómo averiguar la `interface`
 En HAOS suele ser `end0`, `eth0` o `enp0s3`. Mirá en *Configuración → Sistema → Red*, o probá las comunes. Debe ser la interfaz conectada a tu LAN.
