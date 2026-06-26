@@ -1,6 +1,6 @@
 ---
 name: WiFi Presence
-version: "1.1.0"
+version: "1.1.1"
 slug: wifi_presence
 description: >-
   Detección de presencia por WiFi (arp-scan + ping dirigido) que publica un
@@ -9,9 +9,6 @@ url: "https://github.com/Pablopereyradev/ha-wifi-presence"
 arch:
   - aarch64
   - amd64
-  - armv7
-  - armhf
-  - i386
 init: false
 # arp-scan necesita acceso directo a la red de la casa (capa 2):
 host_network: true
