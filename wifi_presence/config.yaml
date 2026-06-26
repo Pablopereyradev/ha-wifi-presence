@@ -1,6 +1,6 @@
 ---
 name: WiFi Presence
-version: "1.1.4"
+version: "1.2.0"
 slug: wifi_presence
 description: >-
   Detección de presencia por WiFi (arp-scan + ping dirigido) que publica un
@@ -22,7 +22,7 @@ homeassistant_api: true
 options:
   scan_interval: 30
   away_timeout: 600
-  interface: end0
+  interface: auto
   people:
     - name: iPhone de Persona 1
       macs:
@@ -34,4 +34,5 @@ schema:
   people:
     - name: str
       macs:
-        - str
+        - match(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)
+      away_timeout: int(60,7200)?

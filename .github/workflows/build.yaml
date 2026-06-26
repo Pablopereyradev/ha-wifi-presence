@@ -1,0 +1,53 @@
+---
+name: Build & Publish
+
+# Compila la imagen del add-on para cada arquitectura y la publica en
+# GitHub Container Registry (GHCR). Asi Home Assistant la DESCARGA ya hecha
+# en vez de compilarla en el equipo del usuario al instalar.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "wifi_presence/**"
+      - ".github/workflows/build.yaml"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [aarch64, amd64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get add-on version
+        id: version
+        run: |
+          v=$(grep -E '^version:' wifi_presence/config.yaml | sed -E 's/version:\s*"?([^"]+)"?/\1/')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push add-on image
+        uses: home-assistant/builder@master
+        with:
+          args: >-
+            --${{ matrix.arch }}
+            --target /data/wifi_presence
+            --image "{arch}-addon-wifi_presence"
+            --docker-hub "ghcr.io/pablopereyradev"
+            --addon

@@ -1,0 +1,49 @@
+#include <tunables/global>
+
+profile wifi_presence flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capacidades que necesitan arp-scan / arping (sockets raw, ARP) y el init s6
+  capability net_admin,
+  capability net_raw,
+  capability net_bind_service,
+  capability setuid,
+  capability setgid,
+  capability dac_override,
+  capability dac_read_search,
+  capability fowner,
+  capability kill,
+
+  # Red: el add-on usa host_network para escanear la LAN
+  network,
+
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # S6-Overlay (sistema de init de las imagenes base de Home Assistant)
+  /init ix,
+  /bin/** ix,
+  /usr/bin/** ix,
+  /usr/sbin/** ix,
+  /sbin/** ix,
+  /command/** ix,
+  /package/** ix,
+  /etc/s6-overlay/** ix,
+  /run/{s6,s6-rc*,service}/** ix,
+  /etc/services.d/** rwix,
+  /etc/cont-init.d/** rwix,
+  /etc/cont-finish.d/** rwix,
+  /run/{,**} rwk,
+  /dev/tty rw,
+
+  # Bashio + nuestros scripts
+  /usr/lib/bashio/** ix,
+  /run.sh r,
+  /presence_scanner.py r,
+
+  # Python (interprete y librerias estandar)
+  /usr/lib/python3*/** r,
+
+  # Temporales y datos del add-on (config en /data/options.json)
+  /tmp/** rwk,
+  /data/** rw,
+}

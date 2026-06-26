@@ -16,6 +16,7 @@ Tambien funciona standalone: ver variables de entorno HA_URL / HA_TOKEN.
 import json, os, re, subprocess, sys, time, unicodedata, urllib.request
 
 OPTIONS_FILE = "/data/options.json"
+MAC_RE = re.compile(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$")
 
 def slugify(name):
     """Convierte un nombre en un id valido para entidad: 'iPhone de Pablo' -> 'iphone_de_pablo'."""
@@ -23,13 +24,27 @@ def slugify(name):
     s = re.sub(r"[^a-zA-Z0-9]+", "_", s).strip("_").lower()
     return s or "persona"
 
+def detect_interface():
+    """Autodetecta la interfaz con la ruta por defecto (la que da a la LAN)."""
+    try:
+        out = subprocess.run(["ip", "route", "show", "default"],
+                             capture_output=True, text=True, timeout=5).stdout
+        mm = re.search(r"\bdev\s+(\S+)", out)
+        if mm:
+            return mm.group(1)
+    except Exception:
+        pass
+    return "eth0"
+
 def load_config():
     """Carga la config del add-on (/data/options.json) o de variables de entorno (standalone)."""
     cfg = {}
     if os.path.exists(OPTIONS_FILE):
         with open(OPTIONS_FILE) as f:
             cfg = json.load(f)
-    iface = cfg.get("interface") or os.getenv("IFACE", "eth0")
+    iface = cfg.get("interface") or os.getenv("IFACE", "")
+    if not iface or iface.lower() == "auto":
+        iface = detect_interface()
     scan_interval = int(cfg.get("scan_interval") or os.getenv("SCAN_INTERVAL", 30))
     away_timeout = int(cfg.get("away_timeout") or os.getenv("AWAY_TIMEOUT", 600))
     # personas: el usuario solo ingresa nombre + macs; el id (y la entidad) se derivan del nombre
@@ -37,7 +52,11 @@ def load_config():
     for p in cfg.get("people", []):
         name = p.get("name") or p.get("id") or "persona"
         pid = slugify(name)
-        personas[pid] = {"name": name, "macs": [m.lower() for m in p["macs"]]}
+        personas[pid] = {
+            "name": name,
+            "macs": [m.lower() for m in p["macs"]],
+            "away_timeout": int(p["away_timeout"]) if p.get("away_timeout") else away_timeout,
+        }
     # Acceso a HA: dentro del add-on usa el Supervisor; standalone usa HA_URL/HA_TOKEN
     sup = os.getenv("SUPERVISOR_TOKEN")
     if sup:
@@ -64,6 +83,7 @@ def publish_discovery():
             "name": p["name"] + " WiFi",
             "unique_id": "wifi_presence_" + pid,
             "state_topic": "wifi_presence/" + pid + "/state",
+            "json_attributes_topic": "wifi_presence/" + pid + "/attrs",
             "payload_home": "home", "payload_not_home": "away",
             "source_type": "router",
             "device": {"identifiers": ["wifi_presence_scanner"],
@@ -72,18 +92,19 @@ def publish_discovery():
         ha_mqtt_publish("homeassistant/device_tracker/wifi_presence_" + pid + "/config", json.dumps(cfg))
     print("[init] discovery publicado para:", list(PERSONAS.keys()), flush=True)
 
-def arp_scan():
-    found = {}
+def arp_scan_raw():
+    """Escaneo arp a toda la subred. Devuelve lista de (ip, mac, fabricante)."""
+    rows = []
     try:
         out = subprocess.run(["arp-scan", "--localnet", "--interface=" + IFACE, "--retry=3", "--timeout=300"],
                              capture_output=True, text=True, timeout=40).stdout
         for line in out.splitlines():
-            mm = re.search(r"(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})", line)
+            mm = re.match(r"(\d+\.\d+\.\d+\.\d+)\s+([0-9a-fA-F:]{17})\s*(.*)", line)
             if mm:
-                found[mm.group(2).lower()] = mm.group(1)
+                rows.append((mm.group(1), mm.group(2).lower(), (mm.group(3).strip() or "?")))
     except Exception as e:
         print("[scan] arp-scan error:", e, flush=True)
-    return found
+    return rows
 
 def kernel_neigh():
     found = {}
@@ -107,13 +128,13 @@ def arping_check(ip, macs):
     except Exception:
         return False
 
-def is_present(macs):
-    found = arp_scan()
+def check_person(macs, found, neigh):
+    """Determina si alguna MAC esta presente usando los resultados ya escaneados.
+    Devuelve (present:bool, method:str|None)."""
     for m in macs:
         if m in found:
             last_ip[m] = found[m]
-            return True
-    neigh = kernel_neigh()
+            return True, "arp-scan"
     ips = set()
     for m in macs:
         for ip in (neigh.get(m), last_ip.get(m)):
@@ -121,8 +142,20 @@ def is_present(macs):
                 ips.add(ip); last_ip[m] = ip
     for ip in ips:
         if arping_check(ip, macs):
-            return True
-    return False
+            return True, "arping"
+    return False, None
+
+def log_discovery(rows):
+    """Lista en el log todos los dispositivos de la red, marcando los configurados.
+    Sirve para descubrir la MAC del telefono sin hurgar en los ajustes del iOS."""
+    configured = {m for p in PERSONAS.values() for m in p["macs"]}
+    print("[discover] === dispositivos detectados en la red (%s) ===" % IFACE, flush=True)
+    if not rows:
+        print("[discover] (ninguno; revisa la interfaz o permisos de red)", flush=True)
+    for ip, mac, vendor in sorted(rows, key=lambda r: tuple(int(x) for x in r[0].split("."))):
+        tag = "  <-- CONFIGURADO" if mac in configured else ""
+        print("[discover]   %-15s  %s  %s%s" % (ip, mac, vendor, tag), flush=True)
+    print("[discover] === copia la MAC de tu telefono y ponela en la config ===", flush=True)
 
 def main():
     if not PERSONAS:
@@ -135,15 +168,33 @@ def main():
     publish_discovery()
     last_seen = {pid: 0.0 for pid in PERSONAS}
     last_state = {pid: None for pid in PERSONAS}
+    first = True
     while True:
         now = time.time()
+        # Un solo escaneo por ciclo, compartido por todas las personas:
+        rows = arp_scan_raw()
+        found = {mac: ip for ip, mac, _ in rows}
+        neigh = kernel_neigh()
+        if first:
+            log_discovery(rows)   # descubrimiento de MAC al arrancar
+            first = False
         for pid, p in PERSONAS.items():
-            if is_present(p["macs"]):
+            present, method = check_person(p["macs"], found, neigh)
+            if present:
                 last_seen[pid] = now
-            state = "home" if (now - last_seen[pid]) < AWAY_TIMEOUT else "away"
+            timeout = p["away_timeout"]
+            state = "home" if (now - last_seen[pid]) < timeout else "away"
             ha_mqtt_publish("wifi_presence/" + pid + "/state", state)
+            attrs = {
+                "last_seen": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(last_seen[pid])) if last_seen[pid] else None,
+                "seconds_since_seen": int(now - last_seen[pid]) if last_seen[pid] else None,
+                "detection_method": method,
+                "away_timeout": timeout,
+            }
+            ha_mqtt_publish("wifi_presence/" + pid + "/attrs", json.dumps(attrs))
             if state != last_state[pid]:
-                print(time.strftime("%H:%M:%S"), p["name"], "->", state, flush=True)
+                via = (" via %s" % method) if method else ""
+                print(time.strftime("%H:%M:%S"), p["name"], "->", state, via, flush=True)
                 last_state[pid] = state
         time.sleep(SCAN_INTERVAL)
 

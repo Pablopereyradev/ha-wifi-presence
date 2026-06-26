@@ -8,7 +8,9 @@ configuration:
     description: Segundos sin ver el teléfono antes de marcar la persona como fuera (60–3600). Más alto = menos falsos "fuera" de noche, pero más lento al salir.
   interface:
     name: Interfaz de red
-    description: Interfaz del host conectada a tu LAN (ej. end0, eth0).
+    description: >-
+      Interfaz del host conectada a tu LAN (ej. end0, eth0). Dejalo en "auto"
+      para que la detecte sola (recomendado).
   people:
     name: Teléfonos / dispositivos
     description: >-

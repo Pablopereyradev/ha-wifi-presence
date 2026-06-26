@@ -40,16 +40,46 @@ people:
 
 > El **nombre** es lo único que define la entidad: el add-on lo convierte a minúsculas/guiones bajos. Ej.: `iPhone de Pablo` → `device_tracker.iphone_de_pablo_wifi`.
 
-### Cómo averiguar la `interface`
-En HAOS suele ser `end0`, `eth0` o `enp0s3`. Mirá en *Configuración → Sistema → Red*, o probá las comunes. Debe ser la interfaz conectada a tu LAN.
+### La `interface` (dejala en `auto`)
+Por defecto está en `auto` y el add-on detecta sola la interfaz que da a tu LAN (la de la ruta por defecto). Solo cambiala a mano (`end0`, `eth0`, `enp0s3`…) si tenés varias interfaces y querés forzar una.
 
 ### Cómo obtener la MAC de cada teléfono
+
+**La forma fácil (recomendada):** instalá y arrancá el add-on con cualquier configuración, abrí la pestaña **Registro (Log)** y vas a ver un listado de **todos los dispositivos de la red** con su IP, MAC y fabricante:
+
+```
+[discover] === dispositivos detectados en la red (end0) ===
+[discover]   192.168.1.45     f4:39:a6:72:ff:67  Apple, Inc.  <-- CONFIGURADO
+[discover]   192.168.1.50     a1:b2:c3:d4:e5:f6  Samsung Electronics
+```
+
+Identificá tu teléfono (por el fabricante: *Apple* para iPhone), copiá la MAC y ponela en la config.
+
+**A mano, desde el teléfono:**
 - **iPhone**: *Ajustes → Wi-Fi → ⓘ de tu red → "Dirección Wi-Fi"* (poné la privada en "Fija" primero). Si tenés bandas 2.4 y 5GHz separadas, puede haber una MAC por banda — agregá ambas.
 - **Android**: *Ajustes → WiFi → tu red → Avanzado → Dirección MAC* (poné "MAC del dispositivo" / desactivá MAC aleatoria para esa red).
 
+### `away_timeout` por persona (opcional)
+Cada persona puede tener su propio `away_timeout` (sobreescribe el global). Útil si alguien tiene un teléfono que duerme más profundo:
+
+```yaml
+people:
+  - name: iPhone de Persona 2
+    macs:
+      - "02:00:00:00:00:02"
+    away_timeout: 1500   # 25 min solo para esta persona
+```
+
 ## Resultado en Home Assistant
 
-Por cada persona se crea un `device_tracker.<name>_wifi` con estado `home` / `not_home`. Para usarlo como presencia "oficial":
+Por cada persona se crea un `device_tracker.<name>_wifi` con estado `home` / `not_home` y estos **atributos** (útiles para diagnóstico):
+
+- `last_seen` — última vez que se detectó el teléfono
+- `seconds_since_seen` — segundos desde la última detección
+- `detection_method` — con qué método se lo vio (`arp-scan` / `arping`)
+- `away_timeout` — el timeout efectivo de esa persona
+
+Para usarlo como presencia "oficial":
 
 *Configuración → Personas → (tu persona) → Dispositivos a seguir → agregá `device_tracker.<name>_wifi`.*
 

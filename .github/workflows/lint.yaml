@@ -1,0 +1,31 @@
+---
+name: Lint
+on:
+  push:
+  pull_request:
+
+jobs:
+  addon-lint:
+    name: Add-on linter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # El linter oficial de add-ons de Home Assistant (de un dev de HA).
+      # Nota: hassfest valida *integraciones* custom, no add-ons; para add-ons
+      # el equivalente es este action.
+      - name: Run Home Assistant add-on linter
+        uses: frenck/action-addon-linter@v2
+        with:
+          path: "./wifi_presence"
+
+  hadolint:
+    name: Dockerfile (hadolint)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: wifi_presence/Dockerfile
