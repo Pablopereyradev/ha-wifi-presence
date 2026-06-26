@@ -1,6 +1,6 @@
 ---
 name: WiFi Presence
-version: "1.1.1"
+version: "1.1.2"
 slug: wifi_presence
 description: >-
   Detección de presencia por WiFi (arp-scan + ping dirigido) que publica un
