@@ -1,0 +1,8 @@
+---
+# Reglas ignoradas (estandar en add-ons de Home Assistant):
+ignored:
+  # El FROM usa ${BUILD_FROM}, que el builder de HA siempre resuelve con tag.
+  - DL3006
+  # Pinear versiones exactas de paquetes apk es fragil: cambian al actualizar
+  # la imagen base de Alpine. Preferimos --no-cache sin pin.
+  - DL3018
