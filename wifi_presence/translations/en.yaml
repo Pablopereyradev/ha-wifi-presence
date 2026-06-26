@@ -1,0 +1,14 @@
+---
+configuration:
+  scan_interval:
+    name: Intervalo de escaneo (s)
+    description: Cada cuántos segundos escanear la red (10–300).
+  away_timeout:
+    name: Tiempo para marcar "fuera" (s)
+    description: Segundos sin ver el teléfono antes de marcar la persona como fuera (60–3600). Más alto = menos falsos "fuera" de noche, pero más lento al salir.
+  interface:
+    name: Interfaz de red
+    description: Interfaz del host conectada a tu LAN (ej. end0, eth0).
+  people:
+    name: Personas
+    description: Personas a seguir, cada una con un id, un nombre y una o más MAC de su teléfono.

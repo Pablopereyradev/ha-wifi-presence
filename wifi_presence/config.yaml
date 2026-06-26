@@ -1,0 +1,42 @@
+---
+name: WiFi Presence
+version: "1.0.0"
+slug: wifi_presence
+description: >-
+  Detección de presencia por WiFi (arp-scan + ping dirigido) que publica un
+  device_tracker por persona vía MQTT. Pensado para teléfonos que duermen el WiFi.
+url: "https://github.com/Pablopereyradev/ha-wifi-presence"
+arch:
+  - aarch64
+  - amd64
+  - armv7
+  - armhf
+  - i386
+init: false
+# arp-scan necesita acceso directo a la red de la casa (capa 2):
+host_network: true
+privileged:
+  - NET_ADMIN
+  - NET_RAW
+# Acceso a la API de Home Assistant (para publicar por MQTT) sin token manual:
+hassio_api: true
+homeassistant_api: true
+# Requiere el broker MQTT (add-on Mosquitto) configurado en HA.
+options:
+  scan_interval: 30
+  away_timeout: 600
+  interface: end0
+  people:
+    - id: persona1
+      name: Persona 1
+      macs:
+        - "02:00:00:00:00:01"
+schema:
+  scan_interval: int(10,300)
+  away_timeout: int(60,3600)
+  interface: str
+  people:
+    - id: str
+      name: str
+      macs:
+        - str
