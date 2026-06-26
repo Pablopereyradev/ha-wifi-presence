@@ -1,7 +1,9 @@
 ---
 name: WiFi Presence
-version: "1.2.0"
+version: "1.2.1"
 slug: wifi_presence
+# Imagen pre-compilada en GHCR: HA la DESCARGA en vez de compilarla localmente.
+image: "ghcr.io/pablopereyradev/{arch}-addon-wifi_presence"
 description: >-
   Detección de presencia por WiFi (arp-scan + ping dirigido) que publica un
   device_tracker por persona vía MQTT. Pensado para teléfonos que duermen el WiFi.

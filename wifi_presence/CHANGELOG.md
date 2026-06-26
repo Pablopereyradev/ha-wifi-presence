@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+
+- **Instalación por descarga directa**: se usa la imagen pre-compilada de GHCR
+  (`image:`), así Home Assistant ya no compila nada en el equipo al instalar.
+
 ## 1.2.0
 
 - **Descubrimiento de MAC**: al arrancar, el add-on lista en el log todos los
