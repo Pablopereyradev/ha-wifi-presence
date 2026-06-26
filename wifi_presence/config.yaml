@@ -1,6 +1,6 @@
 ---
 name: WiFi Presence
-version: "1.2.1"
+version: "1.2.2"
 slug: wifi_presence
 # Imagen pre-compilada en GHCR: HA la DESCARGA en vez de compilarla localmente.
 image: "ghcr.io/pablopereyradev/{arch}-addon-wifi_presence"
@@ -17,10 +17,13 @@ host_network: true
 privileged:
   - NET_ADMIN
   - NET_RAW
-# Acceso a la API de Home Assistant (para publicar por MQTT) sin token manual:
+# Acceso a la API de Home Assistant (fallback de publicación) sin token manual:
 hassio_api: true
 homeassistant_api: true
-# Requiere el broker MQTT (add-on Mosquitto) configurado en HA.
+# Declara que el add-on usa el broker MQTT: el Supervisor le pasa host/usuario/clave
+# y le permite consultar el servicio (sin esto da "API forbidden").
+services:
+  - mqtt:want
 options:
   scan_interval: 30
   away_timeout: 600

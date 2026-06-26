@@ -68,14 +68,39 @@ def load_config():
 IFACE, SCAN_INTERVAL, AWAY_TIMEOUT, PERSONAS, HA_URL, HA_TOKEN = load_config()
 last_ip = {}
 
-def ha_mqtt_publish(topic, payload, retain=True):
+# Datos del broker MQTT (los pasa run.sh desde bashio::services); si no están,
+# se usa el fallback por la API de Home Assistant (modo standalone).
+MQTT_HOST = os.getenv("MQTT_HOST")
+MQTT_PORT = os.getenv("MQTT_PORT", "1883")
+MQTT_USER = os.getenv("MQTT_USER", "")
+MQTT_PASS = os.getenv("MQTT_PASS", "")
+
+def _core_api_publish(topic, payload, retain):
     body = json.dumps({"topic": topic, "payload": payload, "retain": retain, "qos": 0}).encode()
     req = urllib.request.Request(HA_URL + "/api/services/mqtt/publish", data=body,
         headers={"Authorization": "Bearer " + HA_TOKEN, "Content-Type": "application/json"}, method="POST")
-    try:
-        urllib.request.urlopen(req, timeout=10)
-    except Exception as e:
-        print("[mqtt] publish error:", e, flush=True)
+    urllib.request.urlopen(req, timeout=10)
+
+def mqtt_publish(topic, payload, retain=True):
+    """Publica al broker directo con mosquitto_pub; si no hay broker, usa la API de core."""
+    if MQTT_HOST:
+        cmd = ["mosquitto_pub", "-h", MQTT_HOST, "-p", str(MQTT_PORT), "-t", topic, "-m", payload]
+        if retain:
+            cmd.append("-r")
+        if MQTT_USER:
+            cmd += ["-u", MQTT_USER, "-P", MQTT_PASS]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            if r.returncode == 0:
+                return
+            print("[mqtt] mosquitto_pub rc=%s %s" % (r.returncode, r.stderr.strip()), flush=True)
+        except Exception as e:
+            print("[mqtt] mosquitto_pub error:", e, flush=True)
+    if HA_TOKEN:
+        try:
+            _core_api_publish(topic, payload, retain)
+        except Exception as e:
+            print("[mqtt] core api error:", e, flush=True)
 
 def publish_discovery():
     for pid, p in PERSONAS.items():
@@ -89,7 +114,7 @@ def publish_discovery():
             "device": {"identifiers": ["wifi_presence_scanner"],
                        "name": "WiFi Presence", "model": "arp-scan", "manufacturer": "community"},
         }
-        ha_mqtt_publish("homeassistant/device_tracker/wifi_presence_" + pid + "/config", json.dumps(cfg))
+        mqtt_publish("homeassistant/device_tracker/wifi_presence_" + pid + "/config", json.dumps(cfg))
     print("[init] discovery publicado para:", list(PERSONAS.keys()), flush=True)
 
 def arp_scan_raw():
@@ -161,8 +186,8 @@ def main():
     if not PERSONAS:
         print("[error] no hay personas configuradas. Revisa la configuracion.", flush=True)
         sys.exit(1)
-    if not HA_TOKEN:
-        print("[error] sin token de HA (SUPERVISOR_TOKEN o HA_TOKEN).", flush=True)
+    if not MQTT_HOST and not HA_TOKEN:
+        print("[error] sin broker MQTT ni token de HA. Instalá/configurá MQTT.", flush=True)
         sys.exit(1)
     print("[init] WiFi Presence iniciado | interfaz=%s | intervalo=%ss | away=%ss" % (IFACE, SCAN_INTERVAL, AWAY_TIMEOUT), flush=True)
     publish_discovery()
@@ -184,14 +209,14 @@ def main():
                 last_seen[pid] = now
             timeout = p["away_timeout"]
             state = "home" if (now - last_seen[pid]) < timeout else "away"
-            ha_mqtt_publish("wifi_presence/" + pid + "/state", state)
+            mqtt_publish("wifi_presence/" + pid + "/state", state)
             attrs = {
                 "last_seen": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(last_seen[pid])) if last_seen[pid] else None,
                 "seconds_since_seen": int(now - last_seen[pid]) if last_seen[pid] else None,
                 "detection_method": method,
                 "away_timeout": timeout,
             }
-            ha_mqtt_publish("wifi_presence/" + pid + "/attrs", json.dumps(attrs))
+            mqtt_publish("wifi_presence/" + pid + "/attrs", json.dumps(attrs))
             if state != last_state[pid]:
                 via = (" via %s" % method) if method else ""
                 print(time.strftime("%H:%M:%S"), p["name"], "->", state, via, flush=True)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.2
+
+- **Fix de MQTT**: ahora se declara el servicio `mqtt` (arregla el error
+  "Unable to access the API, forbidden") y se publica **directo al broker** con
+  `mosquitto_pub` usando las credenciales que provee el Supervisor, en vez del
+  proxy de la API de core (que daba 502). Fallback a la API de core en standalone.
+
 ## 1.2.1
 
 - **Instalación por descarga directa**: se usa la imagen pre-compilada de GHCR

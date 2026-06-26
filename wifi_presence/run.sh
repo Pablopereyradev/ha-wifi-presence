@@ -4,8 +4,15 @@
 
 bashio::log.info "Iniciando WiFi Presence..."
 
-# Aviso si MQTT no está disponible (el script publica por la API de HA, que necesita MQTT configurado)
-if ! bashio::services.available "mqtt"; then
+# Si el broker MQTT está disponible, pasamos sus credenciales al script para
+# publicar directo (más confiable que el proxy de la API de core).
+if bashio::services.available "mqtt"; then
+  export MQTT_HOST="$(bashio::services mqtt 'host')"
+  export MQTT_PORT="$(bashio::services mqtt 'port')"
+  export MQTT_USER="$(bashio::services mqtt 'username')"
+  export MQTT_PASS="$(bashio::services mqtt 'password')"
+  bashio::log.info "Broker MQTT detectado en ${MQTT_HOST}:${MQTT_PORT}"
+else
   bashio::log.warning "No se detectó el broker MQTT. Instalá y configurá Mosquitto + la integración MQTT en HA."
 fi
 
