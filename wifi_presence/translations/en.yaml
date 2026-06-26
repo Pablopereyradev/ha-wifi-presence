@@ -10,8 +10,8 @@ configuration:
     name: Interfaz de red
     description: Interfaz del host conectada a tu LAN (ej. end0, eth0).
   people:
-    name: Personas / dispositivos
+    name: Teléfonos / dispositivos
     description: >-
-      Una entrada por persona o teléfono. En "name" poné el nombre (ej. "iPhone de Pablo");
+      Una entrada por teléfono. En "name" poné el nombre del dispositivo (ej. "iPhone de Pablo");
       de ahí se genera la entidad device_tracker.iphone_de_pablo_wifi. En "macs" agregá una
-      o más direcciones MAC del teléfono (botón +). Usá el botón + de la lista para sumar más personas.
+      o más direcciones MAC del teléfono (botón +). Usá el botón + de la lista para sumar más dispositivos.
