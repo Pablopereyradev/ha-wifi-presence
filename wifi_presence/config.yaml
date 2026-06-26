@@ -1,6 +1,6 @@
 ---
 name: WiFi Presence
-version: "1.2.2"
+version: "1.2.3"
 slug: wifi_presence
 # Imagen pre-compilada en GHCR: HA la DESCARGA en vez de compilarla localmente.
 image: "ghcr.io/pablopereyradev/{arch}-addon-wifi_presence"

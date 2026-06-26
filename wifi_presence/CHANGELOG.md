@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.3
+
+- **Fix de arranque**: se quita el perfil AppArmor, que bloqueaba el `/init` de
+  s6-overlay (`can't open '/init': Permission denied`) e impedía que el add-on
+  iniciara. La confinación AppArmor se podrá reintroducir más adelante, probada
+  contra un HAOS real.
+
 ## 1.2.2
 
 - **Fix de MQTT**: ahora se declara el servicio `mqtt` (arregla el error
